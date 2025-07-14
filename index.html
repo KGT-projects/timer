@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Auto Timer with Spacebar Shortcut</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f0f0f0;
+    }
+
+    #timer {
+      font-size: 6rem;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="timer">1200</div>
+
+  <script>
+    let timeLeft = 1200; // Starting time
+    const timerDisplay = document.getElementById('timer');
+    let countdown;
+
+    function updateDisplay() {
+      timerDisplay.textContent = timeLeft > 0 ? timeLeft : "Time's up!";
+    }
+
+    function startCountdown() {
+      countdown = setInterval(() => {
+        if (timeLeft > 0) {
+          timeLeft--;
+          updateDisplay();
+        } else {
+          clearInterval(countdown);
+        }
+      }, 1000);
+    }
+
+    // Start the timer
+    updateDisplay();
+    startCountdown();
+
+    // Listen for spacebar key
+    document.addEventListener('keydown', function(event) {
+      if (event.code === 'Space') {
+        event.preventDefault(); // Prevent scrolling
+        if (timeLeft > 100) {
+          timeLeft -= 100;
+        } else {
+          timeLeft = 0;
+          clearInterval(countdown);
+        }
+        updateDisplay();
+      }
+    });
+  </script>
+</body>
+</html>
