@@ -1,72 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Control Panel</title>
+  <title>Control</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 2em;
-    }
-    input, button {
-      font-size: 1.2em;
-      margin: 0.5em 0;
-      display: block;
-    }
+    body { font-family: sans-serif; padding: 2em; }
+    button { font-size: 1.5em; margin: 1em; padding: 1em; }
+    input { font-size: 1em; width: 100%; padding: 0.5em; margin-bottom: 1em; }
   </style>
 </head>
 <body>
-  <input id="token" type="password" placeholder="Enter GitHub token">
-  <button onclick="reset()">Reset to 32 hours</button>
-  <button onclick="subtract()">-4 hours</button>
-
+  <input id="token" placeholder="GitHub Token" />
+  <button onclick="resetTime()">Reset to 32 hours</button>
+  <button onclick="adjustTime(-14400)">-4 hours</button>
   <script>
-    const repo = 'KGT-projects/timer-2.0';
-    const path = 'time.json';
+    const REPO = "KGT-projects/timer-2.0";
+    const PATH = "time.json";
 
-    async function getShaAndContent(token) {
-      const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+    async function getCurrent(token) {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
         headers: { Authorization: `token ${token}` }
       });
-      if (!res.ok) throw new Error('Failed to fetch SHA');
-      const data = await res.json();
-      const content = JSON.parse(atob(data.content));
-      return { sha: data.sha, endTime: content.endTime };
+      return await res.json();
     }
 
     async function updateTime(newEndTime) {
-      const token = document.getElementById('token').value;
-      const { sha } = await getShaAndContent(token);
+      const token = document.getElementById("token").value.trim();
+      const file = await getCurrent(token);
 
-      const body = {
-        message: "Update time",
-        content: btoa(JSON.stringify({ endTime: newEndTime })),
-        sha
-      };
+      const updatedContent = btoa(JSON.stringify({ endTime: newEndTime }));
 
-      await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-        method: 'PUT',
+      await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
+        method: "PUT",
         headers: {
           Authorization: `token ${token}`,
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          message: "Update endTime",
+          content: updatedContent,
+          sha: file.sha
+        })
       });
-
-      alert("Time updated!");
     }
 
-    async function reset() {
-      const token = document.getElementById('token').value;
+    async function resetTime() {
       const newEndTime = Math.floor(Date.now() / 1000) + 32 * 3600;
       await updateTime(newEndTime);
+      alert("Timer reset to 32 hours");
     }
 
-    async function subtract() {
-      const token = document.getElementById('token').value;
-      const { endTime } = await getShaAndContent(token);
-      const newEndTime = endTime - 4 * 3600;
+    async function adjustTime(seconds) {
+      const token = document.getElementById("token").value.trim();
+      const file = await getCurrent(token);
+      const json = JSON.parse(atob(file.content));
+      const newEndTime = json.endTime + seconds;
       await updateTime(newEndTime);
+      alert("Timer adjusted by " + seconds + " seconds");
     }
   </script>
 </body>
