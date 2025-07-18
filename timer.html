@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Remote Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      background: white;
+      color: black;
+      font-size: 5em;
+      font-family: sans-serif;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100vh;
+    }
+    #passwordInput {
+      font-size: 1em;
+      padding: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <input id="passwordInput" type="password" placeholder="Enter token">
+  <div id="timer" style="display:none;">Loading...</div>
+
+  <script>
+    const repo = 'KGT-projects/timer-2.0';
+    const path = 'time.json';
+    let token = '';
+    let endTime = 0;
+
+    function formatTime(seconds) {
+      const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+      const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    async function fetchTime() {
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${repo}/main/${path}?${Date.now()}`);
+        const data = await res.json();
+        endTime = data.endTime;
+      } catch (e) {
+        console.error('Fetch failed:', e);
+      }
+    }
+
+    async function updateLoop() {
+      while (true) {
+        const now = Math.floor(Date.now() / 1000);
+        const remaining = Math.max(0, endTime - now);
+        document.getElementById('timer').textContent = formatTime(remaining);
+        await new Promise(r => setTimeout(r, 1000));
+        if (Date.now() % 15000 < 1000) fetchTime(); // refresh every ~15 seconds
+      }
+    }
+
+    document.body.addEventListener('dblclick', () => {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+    });
+
+    document.getElementById('passwordInput').addEventListener('change', async () => {
+      token = document.getElementById('passwordInput').value;
+      await fetchTime();
+      document.getElementById('passwordInput').style.display = 'none';
+      document.getElementById('timer').style.display = 'block';
+      alert('Token accepted. Timer loaded.');
+      updateLoop();
+    });
+  </script>
+</body>
+</html>
