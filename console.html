@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2em;
+    }
+    input, button {
+      font-size: 1.2em;
+      margin: 0.5em 0;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <input id="token" type="password" placeholder="Enter GitHub token">
+  <button onclick="reset()">Reset to 32 hours</button>
+  <button onclick="subtract()">-4 hours</button>
+
+  <script>
+    const repo = 'KGT-projects/timer-2.0';
+    const path = 'time.json';
+
+    async function getShaAndContent(token) {
+      const res = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+        headers: { Authorization: `token ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch SHA');
+      const data = await res.json();
+      const content = JSON.parse(atob(data.content));
+      return { sha: data.sha, endTime: content.endTime };
+    }
+
+    async function updateTime(newEndTime) {
+      const token = document.getElementById('token').value;
+      const { sha } = await getShaAndContent(token);
+
+      const body = {
+        message: "Update time",
+        content: btoa(JSON.stringify({ endTime: newEndTime })),
+        sha
+      };
+
+      await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `token ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      alert("Time updated!");
+    }
+
+    async function reset() {
+      const token = document.getElementById('token').value;
+      const newEndTime = Math.floor(Date.now() / 1000) + 32 * 3600;
+      await updateTime(newEndTime);
+    }
+
+    async function subtract() {
+      const token = document.getElementById('token').value;
+      const { endTime } = await getShaAndContent(token);
+      const newEndTime = endTime - 4 * 3600;
+      await updateTime(newEndTime);
+    }
+  </script>
+</body>
+</html>
