@@ -4,61 +4,85 @@
   <title>Timer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body, html {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
       background: white;
       color: black;
-      font-size: 5vw;
+      font-family: sans-serif;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      flex-direction: column;
+      height: 100vh;
     }
-    
-    input { font-size: 5vw; padding: 10px; margin-bottom: 20px; }
+    #passwordInput {
+      font-size: 24px;
+      padding: 10px;
+      width: 80%;
+    }
+    #timer {
+      font-size: 60px;
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <input id="token" placeholder="Enter GitHub Token" />
-  <div id="timer" style="display:none"></div>
+  <input type="password" id="passwordInput" placeholder="Enter GitHub Token">
+  <div id="timer">00:00:00</div>
+
   <script>
     const REPO = "KGT-projects/timer-2.0";
     const PATH = "time.json";
-
-    function format(seconds) {
-      const hrs = Math.floor(seconds / 3600);
-      const mins = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      return `${hrs.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-    }
-
-    function startFullscreen() {
-      const el = document.documentElement;
-      if (el.requestFullscreen) el.requestFullscreen();
-    }
-
-    document.getElementById("token").addEventListener("change", async () => {
-      const token = document.getElementById("token").value.trim();
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
-        headers: { Authorization: `token ${token}` }
-      });
-      if (!res.ok) return alert("Invalid token or GitHub error");
-
-      const data = await res.json();
-      const json = JSON.parse(atob(data.content));
-      let endTime = json.endTime;
-      document.getElementById("token").style.display = "none";
-      document.getElementById("timer").style.display = "block";
-      startFullscreen();
-
-      setInterval(async () => {
-        const now = Math.floor(Date.now() / 1000);
-        const left = Math.max(0, endTime - now);
-        document.getElementById("timer").textContent = format(left);
-      }, 1000);
+    const passwordInput = document.getElementById("passwordInput");
+    const timerDisplay = document.getElementById("timer");
+    let token = "";
+    
+    passwordInput.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter") {
+        token = passwordInput.value.trim();
+        passwordInput.style.display = "none";
+        timerDisplay.style.display = "block";
+        startTimer();
+        requestFullscreen();
+      }
     });
+
+    function requestFullscreen() {
+      document.documentElement.requestFullscreen?.();
+    }
+
+    async function fetchTimeJson() {
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: "application/vnd.github.v3.raw"
+        },
+        cache: "no-store"
+      });
+      if (!res.ok) throw new Error("Failed to fetch time.json");
+      const data = await res.text();
+      return JSON.parse(data);
+    }
+
+    function updateDisplay(secondsLeft) {
+      const h = Math.floor(secondsLeft / 3600).toString().padStart(2, '0');
+      const m = Math.floor((secondsLeft % 3600) / 60).toString().padStart(2, '0');
+      const s = (secondsLeft % 60).toString().padStart(2, '0');
+      timerDisplay.textContent = `${h}:${m}:${s}`;
+    }
+
+    function startTimer() {
+      setInterval(async () => {
+        try {
+          const json = await fetchTimeJson();
+          const endTime = json.end;
+          const secondsLeft = Math.max(0, endTime - Math.floor(Date.now() / 1000));
+          updateDisplay(secondsLeft);
+        } catch (e) {
+          console.error(e);
+        }
+      }, 1000);
+    }
   </script>
 </body>
 </html>
